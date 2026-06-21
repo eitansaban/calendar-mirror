@@ -1,0 +1,18 @@
+# OAuth credentials — NEVER commit these
+client_secret.json
+token.json
+
+# Local environment + state
+.env
+.last_successful_run
+*.log
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
