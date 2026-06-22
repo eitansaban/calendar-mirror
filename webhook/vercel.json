@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/renew-watch",
-      "schedule": "0 13 * * *"
-    }
-  ]
-}
