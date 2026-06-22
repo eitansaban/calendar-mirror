@@ -21,104 +21,41 @@ its attendees, or its details.
         the real event stays private; only a generic block crosses over
 ```
 
-It also **self-heals**: if you move or delete the underlying event, the matching
-block is removed on the next run, and it de-dupes so it never stacks blocks.
+It **self-heals** (move or delete the source event and the block follows) and
+**de-dupes** (never stacks blocks).
 
 ---
 
-## How it works
+## Two modes — pick one
 
-One small Python script, run on a schedule:
-
-1. Read the next `LOOKAHEAD_DAYS` of events from `SOURCE_CALENDAR_ID`.
-2. Keep events that qualify (long enough, on a weekday, not a skip-keyword, not
-   from an excluded calendar).
-3. Delete any previously-created blocks whose source event has vanished.
-4. Create a private `MIRROR_TITLE` block for each new qualifying event and invite
-   `MIRROR_INVITE_EMAIL`, padded by `BUFFER_MINUTES`.
-
-If a run fails — or hasn't succeeded in `STALE_THRESHOLD_HOURS` — it emails you.
-
----
-
-## Quickstart
-
-### 1. Get Google OAuth credentials (5 min)
-
-1. In the [Google Cloud Console](https://console.cloud.google.com/), create (or
-   pick) a project and enable the **Google Calendar API** and **Gmail API**.
-2. **APIs & Services → Credentials → Create Credentials → OAuth client ID →
-   Desktop app**.
-3. Download the JSON and save it next to the script as **`client_secret.json`**.
-
-> The Gmail scope is only used to email *you* alerts. If you don't want it,
-> remove the Gmail scope from `SCOPES` and the alert calls.
-
-### 2. Install + configure
-
-```bash
-git clone https://github.com/eitansaban/calendar-mirror.git
-cd calendar-mirror
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-cp .env.example .env
-# edit .env — at minimum set MIRROR_INVITE_EMAIL
-```
-
-### 3. First run (does the OAuth handshake)
-
-```bash
-python calendar_mirror.py
-```
-
-A browser opens once to authorize; a `token.json` is written so future runs are
-non-interactive. That's it — check your target calendar.
-
-### 4. Put it on a schedule
-
-- **macOS (launchd):** edit the paths in
-  [`com.example.calendar-mirror.plist`](com.example.calendar-mirror.plist), copy
-  it to `~/Library/LaunchAgents/`, and `launchctl load` it. The example runs
-  every 2 hours, 6 AM–6 PM, Mon–Fri.
-- **Linux (cron):**
-  ```cron
-  0 6-18/2 * * 1-5  cd /path/to/calendar-mirror && .venv/bin/python calendar_mirror.py
-  ```
-
----
-
-## Configuration
-
-Everything is environment-driven (see [`.env.example`](.env.example)):
-
-| Variable | Default | What it does |
+| | [**`polling/`**](polling) | [**`webhook/`**](webhook) |
 |---|---|---|
-| `MIRROR_INVITE_EMAIL` | **(required)** | Address invited onto every block (your target calendar) |
-| `SOURCE_CALENDAR_ID` | `primary` | Calendar to read from |
-| `ALERT_EMAIL` | = invite email | Where failure/staleness alerts go |
-| `TIMEZONE` | `America/Los_Angeles` | IANA timezone |
-| `MIRROR_TITLE` | `Personal — Busy` | Title shown on the target calendar |
-| `MIRROR_DESC` | `Personal commitment. Time protected.` | Block description |
-| `LOOKAHEAD_DAYS` | `14` | How far ahead to mirror |
-| `BUFFER_MINUTES` | `15` | Padding added before/after each event |
-| `MIN_DURATION_MIN` | `20` | Ignore events shorter than this |
-| `WEEKDAYS_ONLY` | `true` | Only mirror Mon–Fri |
-| `STALE_THRESHOLD_HOURS` | `8` | Alert if no success in this many hours |
-| `SKIP_KEYWORDS` | _(empty)_ | Skip titles containing any of these words |
-| `SKIP_CALENDAR_IDS` | `hebcal,holiday,birthdays` | Skip these organizers (substring match) |
+| How | a script on a schedule | Google push notifications |
+| Latency | your poll interval (minutes) | **seconds** |
+| Works while your machine is off | no | **yes** |
+| Infra | cron / launchd on any machine | Vercel + Supabase + a verified domain |
+| Setup | a few minutes | ~20 minutes |
+| Best for | simplest possible setup | always-on, near-instant mirroring |
+
+Both share the same behavior and privacy model — only generic busy-blocks ever
+reach the target calendar. Start with **polling** if you just want it working;
+move to **webhook** when you want it instant and always-on.
+
+- **[`polling/`](polling)** — one Python script. Credentials and state stay local. → [setup](polling/README.md)
+- **[`webhook/`](webhook)** — a Next.js app on Vercel that subscribes to calendar
+  push events and reconciles via an incremental sync token. → [setup](webhook/README.md)
 
 ---
 
 ## Security & privacy
 
 - **No secrets in the repo.** `client_secret.json`, `token.json`, and `.env` are
-  all git-ignored. Nothing personal is hard-coded — it's all config.
+  git-ignored; nothing personal is hard-coded — it's all config.
 - **Least detail crosses over.** The target calendar only sees the generic
   `MIRROR_TITLE`; the real event's title, attendees, and notes never leave the
   source calendar. Blocks are created with `visibility: private`.
-- **Local-only credentials.** OAuth tokens live on the machine that runs the
-  script; nothing is sent anywhere except Google's APIs.
+- **Calendar-only credentials.** The webhook mode mints a calendar-scoped token
+  so the credential it stores has the smallest possible blast radius.
 - **Revoke anytime** from your [Google Account permissions](https://myaccount.google.com/permissions).
 
 ---

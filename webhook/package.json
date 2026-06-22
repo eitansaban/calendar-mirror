@@ -1,0 +1,23 @@
+{
+  "name": "calendar-mirror-webhook",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Event-driven Google Calendar mirror: a push webhook + watch-renewal cron that mirrors personal events onto a work calendar as private busy-blocks in near real time.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "googleapis": "^144.0.0",
+    "next": "^15.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "typescript": "^5.7.2"
+  }
+}
